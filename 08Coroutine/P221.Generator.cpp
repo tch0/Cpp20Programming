@@ -19,7 +19,7 @@ struct Generator
         {
             return {handle_type::from_promise(*this)}; // construct Generator through coroutine_handle
         }
-        std::suspend_always initial_suspend() noexcept { return {}; }
+        std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         void unhandled_exception() { std::terminate(); }
         void return_void() { }
@@ -31,16 +31,19 @@ struct Generator
         }
         T current_value_;
     };
-    T operator()()
+    void next()
     {
         coro_handle_.resume();
+    }
+    T operator()()
+    {
         return coro_handle_.promise().current_value_;
     }
     explicit operator bool()
     {
         return !coro_handle_.done();
     }
-    Generator(Generator&& rhs) noexcept : coro_handle_(std::exchange(coro_handle_, {})) {}
+    Generator(Generator&& rhs) noexcept : coro_handle_(std::exchange(rhs.coro_handle_, {})) {}
     ~Generator() // used as RAII class
     {
         if (coro_handle_)
@@ -67,7 +70,7 @@ Generator<int> fibo(int n)
 
 int main(int argc, char const *argv[])
 {
-    for (auto g = fibo(1000000); g;)
+    for (auto g = fibo(1000000); g; g.next())
     {
         std::cout << g() << " ";
     }
